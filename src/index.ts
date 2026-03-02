@@ -43,13 +43,13 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Logging middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
   logger.info(`${req.method} ${req.path}`);
   next();
 });
 
 // Health check
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -61,7 +61,7 @@ app.get('/health', (req: Request, res: Response) => {
 import authRoutes from './routes/auth.js';
 
 // API Routes
-app.get('/api', (req: Request, res: Response) => {
+app.get('/api', (_req: Request, res: Response) => {
   res.json({
     message: 'SpecPoints API v1.0',
     status: 'running',
@@ -79,7 +79,7 @@ app.get('/api', (req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 
 // Error handling middleware
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   logger.error(`Error: ${err.message}`);
   res.status(err.status || 500).json({
     error: err.message || 'Internal Server Error',

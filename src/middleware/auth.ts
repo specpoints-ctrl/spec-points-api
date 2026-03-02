@@ -149,7 +149,10 @@ export const requireRole = (...roles: string[]) => {
 };
 
 // Helper to create Firebase user
-export const createFirebaseUser = async (email: string, password: string) => {
+export const createFirebaseUser = async (
+  email: string,
+  password: string
+): Promise<admin.auth.UserRecord> => {
   try {
     const userRecord = await admin.auth().createUser({
       email,
