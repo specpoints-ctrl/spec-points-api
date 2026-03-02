@@ -1,7 +1,7 @@
 import { app, logger } from './index.js';
 import { testConnection } from './db/config.js';
 
-const PORT = process.env.API_PORT || 3000;
+const PORT = Number(process.env.PORT || process.env.API_PORT || 3000);
 
 // Test database connection before starting server
 const startServer = async () => {
