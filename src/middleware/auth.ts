@@ -21,11 +21,22 @@ const initializeFirebase = () => {
     }
 
     const projectId = process.env.FIREBASE_PROJECT_ID;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 
     if (!projectId || !privateKey || !clientEmail) {
       throw new Error('Firebase credentials are not properly configured');
+    }
+
+    // Normalize private key format - handle different input formats
+    privateKey = privateKey
+      .replace(/\\n/g, '\n') // Convert literal \n to actual newlines
+      .replace(/"/g, '')      // Remove quotes if present
+      .trim();
+    
+    // Ensure proper PEM format
+    if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+      privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----\n`;
     }
 
     return admin.initializeApp({
@@ -37,6 +48,10 @@ const initializeFirebase = () => {
     });
   } catch (error) {
     logger.error('Failed to initialize Firebase:', error);
+    logger.error('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID);
+    logger.error('FIREBASE_CLIENT_EMAIL:', process.env.FIREBASE_CLIENT_EMAIL);
+    logger.error('FIREBASE_PRIVATE_KEY length:', process.env.FIREBASE_PRIVATE_KEY?.length);
+    logger.error('FIREBASE_PRIVATE_KEY first 50 chars:', process.env.FIREBASE_PRIVATE_KEY?.substring(0, 50));
     throw error;
   }
 };
