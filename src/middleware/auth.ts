@@ -25,7 +25,15 @@ const initializeFirebase = () => {
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 
     if (!projectId || !privateKey || !clientEmail) {
-      throw new Error('Firebase credentials are not properly configured');
+      const missingVars = [];
+      if (!projectId) missingVars.push('FIREBASE_PROJECT_ID');
+      if (!privateKey) missingVars.push('FIREBASE_PRIVATE_KEY');
+      if (!clientEmail) missingVars.push('FIREBASE_CLIENT_EMAIL');
+      
+      logger.warn('⚠️  Firebase credentials missing:', missingVars.join(', '));
+      logger.warn('⚠️  API will start but authentication endpoints will not work');
+      logger.warn('⚠️  Configure Firebase env vars in Railway and redeploy');
+      return null;
     }
 
     // Normalize private key format - handle different input formats
@@ -39,24 +47,28 @@ const initializeFirebase = () => {
       privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----\n`;
     }
 
-    return admin.initializeApp({
+    const app = admin.initializeApp({
       credential: admin.credential.cert({
         projectId,
         privateKey,
         clientEmail,
       }),
     });
+    
+    logger.info('✅ Firebase initialized successfully');
+    return app;
   } catch (error) {
-    logger.error('Failed to initialize Firebase:', error);
-    logger.error('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID);
-    logger.error('FIREBASE_CLIENT_EMAIL:', process.env.FIREBASE_CLIENT_EMAIL);
-    logger.error('FIREBASE_PRIVATE_KEY length:', process.env.FIREBASE_PRIVATE_KEY?.length);
-    logger.error('FIREBASE_PRIVATE_KEY first 50 chars:', process.env.FIREBASE_PRIVATE_KEY?.substring(0, 50));
-    throw error;
+    logger.error('❌ Failed to initialize Firebase:', error);
+    logger.error('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID || '(not set)');
+    logger.error('FIREBASE_CLIENT_EMAIL:', process.env.FIREBASE_CLIENT_EMAIL || '(not set)');
+    logger.error('FIREBASE_PRIVATE_KEY length:', process.env.FIREBASE_PRIVATE_KEY?.length || 0);
+    logger.error('FIREBASE_PRIVATE_KEY first 50 chars:', process.env.FIREBASE_PRIVATE_KEY?.substring(0, 50) || '(not set)');
+    logger.warn('⚠️  API will start but authentication will not work');
+    return null;
   }
 };
 
-// Initialize on module load
+// Initialize on module load (may return null if not configured)
 export const firebaseApp = initializeFirebase();
 
 // Extended Request type with user info
@@ -76,6 +88,15 @@ export const authenticateToken = async (
   next: NextFunction
 ) => {
   try {
+    // Check if Firebase is initialized
+    if (!firebaseApp) {
+      return res.status(503).json({
+        success: false,
+        error: 'Authentication service not configured',
+        message: 'Firebase credentials missing. Contact administrator.',
+      });
+    }
+
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {

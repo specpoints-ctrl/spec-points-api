@@ -54,6 +54,49 @@ app.get('/health', (_req: Request, res: Response) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    firebase: {
+      configured: !!(process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY),
+      projectId: process.env.FIREBASE_PROJECT_ID ? '✓ set' : '✗ missing',
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL ? '✓ set' : '✗ missing',
+      privateKey: process.env.FIREBASE_PRIVATE_KEY ? `✓ set (${process.env.FIREBASE_PRIVATE_KEY.length} chars)` : '✗ missing',
+    },
+    database: {
+      configured: !!process.env.DATABASE_URL,
+      url: process.env.DATABASE_URL ? '✓ set' : '✗ missing',
+    },
+  });
+});
+
+// Debug endpoint (development only)
+app.get('/debug/env', (_req: Request, res: Response) => {
+  const envVars = Object.keys(process.env)
+    .filter(key => 
+      key.startsWith('FIREBASE_') || 
+      key.startsWith('DATABASE_') ||
+      key.startsWith('NODE_') ||
+      key.startsWith('API_') ||
+      key.startsWith('PORT') ||
+      key.startsWith('CORS_') ||
+      key.startsWith('JWT_') ||
+      key.startsWith('LOG_')
+    )
+    .reduce((acc, key) => {
+      // Mask sensitive values
+      if (key.includes('SECRET') || key.includes('PRIVATE_KEY') || key.includes('DATABASE_URL')) {
+        acc[key] = process.env[key] 
+          ? `${process.env[key].substring(0, 20)}...(${process.env[key].length} chars total)` 
+          : '(not set)';
+      } else {
+        acc[key] = process.env[key] || '(not set)';
+      }
+      return acc;
+    }, {} as Record<string, string>);
+
+  res.json({
+    message: 'Environment variables (sensitive values masked)',
+    env: envVars,
+    totalEnvVars: Object.keys(process.env).length,
   });
 });
 
