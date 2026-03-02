@@ -1,6 +1,17 @@
 import admin from 'firebase-admin';
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../index.js';
+import winston from 'winston';
+
+// Create a dedicated logger for auth module to avoid circular dependency
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.simple(),
+    }),
+  ],
+});
 
 // Initialize Firebase Admin SDK
 const initializeFirebase = () => {
